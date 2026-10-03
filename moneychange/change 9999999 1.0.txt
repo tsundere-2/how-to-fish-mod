@@ -1,0 +1,126 @@
+using BepInEx;
+using BepInEx.Logging;
+using HarmonyLib;
+using UnityEngine;
+using System.Reflection;
+using System.Linq;
+
+namespace FishUnlimitedMoneyFinal
+{
+    [BepInPlugin("me.yexiao.fish.finalmod", "FishUnlimitedMoneyFinal", "3.0.0")]
+    public class FishUnlimitedMoneyFinal : BaseUnityPlugin
+    {
+        public const int ResetTargetMoney = 9999999;
+        private Harmony _harmony;
+        private static FieldInfo _moneySyncVarField;
+        private static FieldInfo _euroSyncVarField;
+        // 同时拿到两个核心数值字段
+        private static FieldInfo _syncVarInitialValueField;
+        private static FieldInfo _syncVarCurrentValueField;
+        private static MethodInfo _moneySetMethod;
+        private static MethodInfo _euroSetMethod;
+        private static UnityEngine.Object _moneyMgrInstance;
+        private bool _allFieldInitialized = false;
+
+        void Awake()
+        {
+            Logger.LogInfo("✅ 双字段全锁死版货币重置Mod加载中");
+            _harmony = new Harmony("me.yexiao.fish.finalmod");
+            var moneyMgrType = AccessTools.TypeByName("MoneyManager");
+            if (moneyMgrType == null)
+            {
+                Logger.LogError("❌ 找不到MoneyManager类型，Mod终止");
+                return;
+            }
+            _moneySetMethod = AccessTools.PropertySetter(moneyMgrType, "Money");
+            _euroSetMethod = AccessTools.PropertySetter(moneyMgrType, "Euro");
+        }
+
+        void Update()
+        {
+            if (!_allFieldInitialized && Time.timeSinceLevelLoad > 1f)
+            {
+                var moneyMgrType = AccessTools.TypeByName("MoneyManager");
+                var allFields = moneyMgrType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                foreach (var field in allFields)
+                {
+                    if (field.Name == "_money" && field.FieldType.Name.StartsWith("SyncVar`1"))
+                    {
+                        _moneySyncVarField = field;
+                        Logger.LogInfo($"✅ 找到Money的SyncVar字段：{field.Name}");
+                    }
+                    if (field.Name == "_euro" && field.FieldType.Name.StartsWith("SyncVar`1"))
+                    {
+                        _euroSyncVarField = field;
+                        Logger.LogInfo($"✅ 找到Euro的SyncVar字段：{field.Name}");
+                    }
+                }
+
+                // 精准定位两个核心数值字段
+                if (_moneySyncVarField != null)
+                {
+                    var syncVarType = _moneySyncVarField.FieldType;
+                    _syncVarInitialValueField = syncVarType.GetField("_initialValue", BindingFlags.NonPublic | BindingFlags.Instance);
+                    _syncVarCurrentValueField = syncVarType.GetField("_value", BindingFlags.NonPublic | BindingFlags.Instance);
+                    Logger.LogInfo($"✅ 定位SyncVar初始化基准值字段：{_syncVarInitialValueField.Name}");
+                    Logger.LogInfo($"✅ 定位SyncVar当前运行数值字段：{_syncVarCurrentValueField.Name}");
+                }
+                _allFieldInitialized = true;
+                Logger.LogInfo("✅ 所有字段初始化完成，功能就绪");
+            }
+
+            if (!_allFieldInitialized) return;
+
+            if (_moneyMgrInstance == null && Time.frameCount % 60 == 0)
+            {
+                _moneyMgrInstance = Object.FindAnyObjectByType(_moneySyncVarField?.DeclaringType ?? _moneySetMethod.DeclaringType);
+                if (_moneyMgrInstance != null)
+                {
+                    Logger.LogInfo("✅ 成功获取MoneyManager实例");
+                }
+            }
+
+            // 小键盘1一键重置，同时修改所有底层数值，彻底杜绝回滚
+            if (Input.GetKeyDown(KeyCode.Keypad1) && _moneyMgrInstance != null)
+            {
+                // 处理Money货币
+                if (_moneySyncVarField != null)
+                {
+                    var moneySyncVarInstance = _moneySyncVarField.GetValue(_moneyMgrInstance);
+                    if (moneySyncVarInstance != null)
+                    {
+                        _syncVarInitialValueField.SetValue(moneySyncVarInstance, ResetTargetMoney);
+                        _syncVarCurrentValueField.SetValue(moneySyncVarInstance, ResetTargetMoney);
+                        Logger.LogInfo("✅ Money的SyncVar基准值和当前值已全部修改为9999999");
+                    }
+                }
+                // 处理Euro货币
+                if (_euroSyncVarField != null)
+                {
+                    var euroSyncVarInstance = _euroSyncVarField.GetValue(_moneyMgrInstance);
+                    if (euroSyncVarInstance != null)
+                    {
+                        _syncVarInitialValueField.SetValue(euroSyncVarInstance, ResetTargetMoney);
+                        _syncVarCurrentValueField.SetValue(euroSyncVarInstance, ResetTargetMoney);
+                        Logger.LogInfo("✅ Euro的SyncVar基准值和当前值已全部修改为9999999");
+                    }
+                }
+                // 调用游戏官方属性，触发所有UI刷新、同步回调
+                if (_moneySetMethod != null)
+                {
+                    _moneySetMethod.Invoke(_moneyMgrInstance, new object[] { ResetTargetMoney });
+                }
+                if (_euroSetMethod != null)
+                {
+                    _euroSetMethod.Invoke(_moneyMgrInstance, new object[] { ResetTargetMoney });
+                }
+                Logger.LogInfo($"✅ 所有货币已完全重置为 {ResetTargetMoney}，不会被任何游戏逻辑回滚");
+            }
+        }
+
+        void OnDestroy()
+        {
+            _harmony.UnpatchSelf();
+        }
+    }
+}
