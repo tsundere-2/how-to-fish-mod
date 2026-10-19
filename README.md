@@ -79,6 +79,7 @@ How to Fish\
 | `boxinginjury/boxinginjury.dll` | `BepInEx\plugins\` |
 | `flymod/flymod.dll` | `BepInEx\plugins\` |
 | `unrivalled/unrivalled.dll` | `BepInEx\plugins\` |
+| `moneychange/maxmoney.dll` | `BepInEx\plugins\` |
 
 操作步骤：
 
@@ -96,35 +97,36 @@ How to Fish\BepInEx\plugins\
 ├─ boxinginjury.dll
 ├─ flymod.dll
 ├─ unrivalled.dll
-└─ maxmoney.dll        ← 可选的金钱 Mod（见下方说明）
+└─ maxmoney.dll        ← 金钱 Mod（见下方说明）
 ```
 
 ### 关于 `moneychange\`（金钱 Mod）
 
-`moneychange\` 现在是**标准工程结构**，和另外几个 Mod 一样可以直接编译：
+`moneychange\` 和另外几个 Mod 结构完全一致：**编译好的 DLL + 源码**都在里面。
 
 ```
 moneychange\
-├─ moneychange.csproj
-├─ README.md              ← 这个 Mod 的详细说明
-└─ src\
+├─ maxmoney.dll            ← 编译好的成品，直接用这个
+├─ README.md               ← 这个 Mod 的详细说明
+└─ moneychange_src\
+   ├─ moneychange.csproj
    └─ Money.cs
 ```
 
-编译产物是 **`maxmoney.dll`**（插件名 `FishUnlimitedMoneyFinal`）：
-
-```powershell
-cd moneychange
-dotnet build -c Release
-# → bin\Release\maxmoney.dll 丢进 BepInEx\plugins\
-```
-
-用法：进游戏按 **小键盘 1** → 美元和欧元设为 **9999999**。
+**用法**：把 `moneychange\maxmoney.dll` 复制到 `BepInEx\plugins\`，
+进游戏按 **小键盘 1** → 美元和欧元设为 **9999999**。
 数值和按键都能在 `BepInEx\config\me.yexiao.fish.finalmod.cfg` 里改。
 
-> ⚠️ 本仓库**不附带**编译好的 `maxmoney.dll`，需要自己编译一次。
-> 如果你手上已有旧版 `maxmoney.dll`（3.0.0 / 3.1.0），它和这里编译出来的是**同一个 GUID**
-> （`me.yexiao.fish.finalmod`），**不能同时放**，二选一。
+**自己编译**：
+
+```powershell
+cd moneychange\moneychange_src
+dotnet build -c Release
+# → bin\Release\maxmoney.dll
+```
+
+> ⚠️ 如果你手上已有旧版 `maxmoney.dll`（3.0.0 / 3.1.0），它和仓库里这个是**同一个 GUID**
+> （`me.yexiao.fish.finalmod`），**不能同时放**，删掉旧的再用新的。
 
 > 📌 3.2.0 相比旧版修了一个实际问题：旧版依赖游戏的 `OnChangeMoney` 刷新 UI，
 > 但那个回调在**单人/主机模式**下 `asServer == true` 会被直接跳过，导致数字不变。
@@ -180,6 +182,7 @@ dotnet build -c Release
 cd boxinginjury\boxinginjury_src ; dotnet build -c Release
 cd unrivalled\unrivalled_src    ; dotnet build -c Release
 cd flymod\flymod_src            ; dotnet build -c Release
+cd moneychange\moneychange_src  ; dotnet build -c Release   # 产物 maxmoney.dll
 ```
 
 ### 3.4 `flymod` 的工程文件
@@ -196,10 +199,11 @@ dotnet build -c Release
 
 ### 3.5 `moneychange` 编译
 
-`moneychange\` 已经是完整工程，直接编译即可：
+`moneychange\moneychange_src\` 里已经放好 `moneychange.csproj` 和源码，直接编译即可
+（和 3.4 完全同一个模板）：
 
 ```powershell
-cd moneychange
+cd moneychange\moneychange_src
 dotnet build -c Release
 ```
 
@@ -272,15 +276,16 @@ dotnet build -c Release
 开启后本地玩家**受到任何伤害都不掉血**（攻击、BOSS、中毒、着火、饥饿全部免疫）。
 另有可选开关 `保持满血`（默认关）。
 
-### 4.5 FishUnlimitedMoneyFinal — 金钱（`maxmoney.dll`，可选）
+### 4.5 FishUnlimitedMoneyFinal — 金钱（`maxmoney.dll`）
+
+DLL 就在 [`moneychange/maxmoney.dll`](moneychange/maxmoney.dll)，直接下载放进 `plugins\` 即可。
 
 | 按键 | 功能 |
 |---|---|
 | **小键盘 1** | 金钱和欧元直接设为 **9999999** |
 
-> 本仓库**不附带**编译好的 `maxmoney.dll`，需要按 3.5 自己编译一次。
 > 数值和按键都可以在 `BepInEx\config\me.yexiao.fish.finalmod.cfg` 里改（`货币数值` / `一键补满货币按键`）。
-> 和旧版 `maxmoney.dll`（3.0.0 / 3.1.0）是同一个 GUID，**不能同时放**。
+> 和旧版 `maxmoney.dll`（3.0.0 / 3.1.0）是同一个 GUID，**不能同时放**，删掉旧的再用新的。
 
 ### 4.6 按键冲突检查表
 
@@ -446,9 +451,10 @@ how-to-fish-mod/
 │     ├─ unrivalled.csproj
 │     └─ Unrivalled.cs
 └─ moneychange/
-   ├─ moneychange.csproj
+   ├─ maxmoney.dll                    ← 编译好的插件
    ├─ README.md                       ← 这个 Mod 的原理与说明
-   └─ src/
+   └─ moneychange_src/
+      ├─ moneychange.csproj
       └─ Money.cs                     ← 货币重置（产物 maxmoney.dll）
 ```
 

@@ -7,9 +7,20 @@
 - 插件 GUID：`me.yexiao.fish.finalmod`
 - 版本：3.2.0
 
+## 目录
+
+```
+moneychange/
+├─ maxmoney.dll              ← 编译好的成品，直接用这个
+├─ README.md
+└─ moneychange_src/
+   ├─ moneychange.csproj
+   └─ Money.cs
+```
+
 ## 用法
 
-1. 编译（或使用已编译的 `maxmoney.dll`），放进 `BepInEx\plugins\`
+1. 下载本目录下的 **`maxmoney.dll`**，放进 `BepInEx\plugins\`
 2. 进游戏，按 **小键盘 1** → 美元和欧元变成 **9999999**
 3. 数值和按键都能在 `BepInEx\config\me.yexiao.fish.finalmod.cfg` 里改：
 
@@ -25,7 +36,7 @@
 
 ```powershell
 # 先把 csproj 里的 <GameDir> 改成你的游戏目录
-cd moneychange
+cd moneychange\moneychange_src
 dotnet build -c Release
 # 产物: bin\Release\maxmoney.dll
 ```
