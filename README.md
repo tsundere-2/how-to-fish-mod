@@ -1,1 +1,452 @@
-# how-to-fish-mod
+# How to Fish — 本地 Mod 使用说明
+
+《How to Fish》的 BepInEx 插件合集。仓库里同时提供**已编译好的 DLL**（直接丢进游戏就能用）和**完整源码**（想自己改数值/加功能时用）。
+
+- 游戏：How to Fish（Unity 6000.4.4f1，**Mono** 运行时，64 位）
+- 加载器：**BepInEx 5.4.23.5 x64**
+- 补丁框架：Harmony 2（BepInEx 5 自带）
+- 插件之间互相独立，可以只装其中几个
+
+> ⚠️ 仅用于**单人 / 本地主机**模式。联机时改数值可能被服务端覆盖或影响他人，请自行判断。
+
+---
+
+## 快速开始（3 步）
+
+1. 装 **BepInEx 5.4.23.5 x64**（见第 1 节），先启动一次游戏再退出。
+2. 把 `aimlock.dll` / `boxinginjury.dll` / `flymod.dll` / `unrivalled.dll` 全部丢进
+   `How to Fish\BepInEx\plugins\`。
+3. 重启游戏 → 看 `BepInEx\LogOutput.log` 里出现 `Loading [FlyMod 1.0.0]` 之类的行就成功了。
+
+> 想改数值或加功能 → 看第 3 节从源码编译；只想要效果 → 第 2 节就够了，**不需要装 .NET SDK**。
+
+---
+
+## 目录
+
+1. [前置：安装 BepInEx](#1-前置安装-bepinex)
+2. [方式一：直接用现成 DLL（推荐，不用编译）](#2-方式一直接用现成-dll推荐不用编译)
+3. [方式二：从源码编译](#3-方式二从源码编译)
+4. [Mod 清单与热键](#4-mod-清单与热键)
+5. [配置文件怎么改](#5-配置文件怎么改)
+6. [验证是否加载成功](#6-验证是否加载成功)
+7. [常见问题](#7-常见问题)
+8. [卸载](#8-卸载)
+9. [仓库结构](#9-仓库结构)
+
+---
+
+## 1. 前置：安装 BepInEx
+
+如果游戏目录下**已经**有下面两个东西，说明 BepInEx 装好了，可以跳到第 2 步：
+
+```
+How to Fish\
+├─ winhttp.dll
+└─ BepInEx\
+   ├─ core\BepInEx.dll
+   └─ plugins\
+```
+
+没有的话：
+
+1. 去 [BepInEx Releases](https://github.com/BepInEx/BepInEx/releases) 下载 **5.4.23.5** 的 **x64** 包
+   （文件名类似 `BepInEx_win_x64_5.4.23.5.zip`）。
+   **不要**下 6.x 的 BleedingEdge，也**不要**下 IL2CPP 版——本游戏是 Mono。
+
+   直接下载链接：
+   `https://github.com/BepInEx/BepInEx/releases/download/v5.4.23.5/BepInEx_win_x64_5.4.23.5.zip`
+
+2. 找到游戏目录：
+   Steam 库 → 右键 **How to Fish** → **管理** → **浏览本地文件**
+   （就是有 `How to Fish.exe` 的那一层）。
+
+3. 把压缩包里的 `winhttp.dll`、`doorstop_config.ini`、`.doorstop_version`、`BepInEx\` 全部解压进游戏目录，和 `How to Fish.exe` 放在同一层。
+   > 这几样必须齐全，少一个都会导致注入失败。
+
+4. **先启动一次游戏**，等进到主菜单后退出。
+   这一步会生成 `BepInEx\config\` 和 `BepInEx\LogOutput.log`，说明加载器正常工作了。
+
+---
+
+## 2. 方式一：直接用现成 DLL（推荐，不用编译）
+
+仓库里每个 Mod 目录下都有一个编译好的 `.dll`：
+
+| 文件 | 放到哪里 |
+|---|---|
+| `aimlock/aimlock.dll` | `BepInEx\plugins\` |
+| `boxinginjury/boxinginjury.dll` | `BepInEx\plugins\` |
+| `flymod/flymod.dll` | `BepInEx\plugins\` |
+| `unrivalled/unrivalled.dll` | `BepInEx\plugins\` |
+
+操作步骤：
+
+1. 在 GitHub 上打开对应目录 → 点 `xxx.dll` → 右上角 **Download raw file**（或 **Raw** → 右键另存为）。
+2. 把下载到的 `.dll` 复制到 **`BepInEx\plugins\`** 里。
+   > 直接平铺在 `plugins\` 下就行，不用建子文件夹（建了也能识别，BepInEx 会递归扫描）。
+3. 有几个就放几个，**互不依赖**，只放 `flymod.dll` 也完全没问题。
+4. **完全退出游戏再重开**（BepInEx 只在启动时扫描插件，游戏内无法热加载）。
+
+最终大概长这样：
+
+```
+How to Fish\BepInEx\plugins\
+├─ aimlock.dll
+├─ boxinginjury.dll
+├─ flymod.dll
+├─ unrivalled.dll
+└─ maxmoney.dll        ← 可选的金钱 Mod（见下方说明）
+```
+
+### 关于 `moneychange\`（金钱 Mod）
+
+`moneychange\` 里只有 **`.txt` 源码**，没有编译好的 DLL，所以不能直接丢进游戏。
+两种选择：
+
+- **只要效果**：使用你已有的 `maxmoney.dll`（插件 `FishUnlimitedMoneyFinal`）。
+  按 **小键盘 1** → 金钱和欧元直接设为 **9999999**。
+- **想自己编译**：把 `.txt` 改名为 `.cs`，按第 3 步建工程编译（见下方 `moneychange` 的说明）。
+
+> 注意：仓库里这几个 `.txt` 是同一插件的不同历史版本，而且 **GUID 相同**，编译时只能留一个：
+
+| 文件 | 版本 | 说明 |
+|---|---|---|
+| `change to 99999.txt` | 1.5.0 | 早期版本，金钱 99999 |
+| `change to 9999999.txt` | 1.7.1 | 金钱 9999999，带底层字段改写 |
+| `change 9999999 1.0.txt` | 3.0.0 | 同时改 Money 和 Euro 的 SyncVar |
+| `change to 9999999 1.1.txt` | — | **空文件**，可忽略 |
+
+> 同时编译两个会因同名命名空间/类报错，**只留一个**即可。
+> 文件本身是 UTF-8 编码，中文注释正常；如果你在 PowerShell 里 `cat` 看到乱码，那只是控制台编码问题，不影响编译。
+
+> ⚠️ 还有一点：`maxmoney.dll` 和 `moneychange\` 里的源码用的是**同一个插件 GUID**
+> （`me.yexiao.fish.finalmod`）。所以**不要**同时把编译出来的 DLL 和现有的 `maxmoney.dll`
+> 一起放进 `plugins\`，否则 BepInEx 会报重复 GUID，只加载其中一个。二选一即可。
+
+---
+
+## 3. 方式二：从源码编译
+
+### 3.1 装工具
+
+- 安装 [.NET SDK](https://dotnet.microsoft.com/download)（8 或 9 都行，只要支持 `netstandard2.1`）。
+- 命令行验证：
+
+```powershell
+dotnet --version
+```
+
+### 3.2 ⚠️ 必改：`GameDir`
+
+每个 `*.csproj` 里都硬编码了我本机的游戏路径：
+
+```xml
+<GameDir>D:\SteamLibrary\steamapps\common\How to Fish\How to Fish</GameDir>
+```
+
+**你必须把它改成自己的游戏目录**，否则编译时会找不到 `Assembly-CSharp.dll`。
+
+改法（两种都行）：
+
+**方法 A**：直接编辑 `csproj`，把 `<GameDir>` 那一行换成你的路径。
+
+**方法 B**：编译时用参数覆盖，不用改文件：
+
+```powershell
+dotnet build -c Release -p:GameDir="E:\Steam\steamapps\common\How to Fish\How to Fish"
+```
+
+> 路径里有空格是正常的，PowerShell 里用双引号包住即可。
+
+### 3.3 编译
+
+```powershell
+cd aimlock\aimlock_src
+dotnet build -c Release
+```
+
+产物在 `bin\Release\aimlock.dll`，复制到 `BepInEx\plugins\` 即可。
+
+其余 Mod 同理：
+
+```powershell
+cd boxinginjury\boxinginjury_src ; dotnet build -c Release
+cd unrivalled\unrivalled_src    ; dotnet build -c Release
+cd flymod\flymod_src            ; dotnet build -c Release
+```
+
+### 3.4 `flymod` 的工程文件
+
+`flymod/flymod_src/` 里已经放好 `flymod.csproj`（和另外几个 Mod 的配置完全一致），
+**只要把 `GameDir` 改成你的游戏路径就能直接编译**：
+
+```powershell
+cd flymod\flymod_src
+dotnet build -c Release
+```
+
+如果编译时报 `<GameDir>` 相关的找不到文件错误，说明路径没改，见 3.2。
+
+### 3.5 `moneychange` 怎么编译
+
+1. 在 `moneychange\` 下新建文件夹 `src\`，把**其中一个** `.txt` 复制进去并改名成 `.cs`
+   （推荐 `change 9999999 1.0.txt` → `Money.cs`，这是最新版 3.0.0）。
+2. 新建 `moneychange\moneychange.csproj`，内容与 3.4 相同，只把这两行改掉：
+
+```xml
+<AssemblyName>maxmoney</AssemblyName>
+<RootNamespace>maxmoney</RootNamespace>
+```
+
+3. `dotnet build -c Release`，把产物 `bin\Release\maxmoney.dll` 丢进 `plugins\`。
+
+> 源码里用的 `Object.FindAnyObjectByType<T>()` 需要较新的 Unity，本作是 6000.4，没问题。
+> 如果你只是想改数值，编译前把源码顶部的 `ResetTargetMoney` / `CustomMoneyValue` 常量改成你要的数字即可。
+
+---
+
+## 4. Mod 清单与热键
+
+**所有按键都可以在配置文件里改**（见第 5 节）。下表是默认值。
+
+### 4.1 FlyMod — 飞行 / 悬浮（`flymod.dll`）
+
+让角色起飞、悬停，速度可实时调节。
+
+| 按键 | 功能 |
+|---|---|
+| **小键盘 0** | 开 / 关 飞行·悬浮 |
+| **小键盘 \*** | 加速 +5 m/s |
+| **小键盘 /** | 减速 −5 m/s |
+| **小键盘 =** | 速度重置为 20 m/s |
+| **空格**（按住） | 上升 |
+| **左 Ctrl**（按住） | 下降 |
+| **左 Shift**（按住） | 临时加速 ×2 |
+
+操作要点：
+
+- **朝哪看，按 W 就往哪飞**（水平方向用相机朝向，抬头也能往上飞）。
+- **松开 WASD = 原地悬停**，不会掉下去（飞行时会关闭重力）。
+- 不按上升/下降 = 高度不变。
+- 默认速度 20 m/s，范围 1 ~ 200 m/s。
+
+> 空格/左Ctrl/左Shift 原本是跳跃/蹲下/冲刺。飞行时它们被用作上升/下降/加速，
+> 觉得冲突就在配置里改成小键盘的键（比如 `上升热键 = Keypad8`）。
+
+### 4.2 FishAimLock — 瞄准锁定 / 强制爆头（`aimlock.dll`）
+
+| 按键 | 功能 |
+|---|---|
+| **小键盘 2** | 开 / 关 锁头功能 |
+| **小键盘 3** | 诊断：把识别到的生物、HeadPos、包围盒、瞄点打印到日志 |
+| **小键盘 4** | 解除当前锁定，重新识别 |
+| **小键盘 8 / 5** | 当前目标瞄点上移 / 下移（自动保存为该生物专属瞄点） |
+| **小键盘 9 / 7** | 当前目标瞄点前移 / 后移 |
+| **小键盘 6** | 清除当前生物的专属瞄点偏移 |
+| **鼠标中键** | 可选：只有把 `需要按住触发键` 改成 `true` 后才生效（默认关） |
+
+- 默认 **仅在开镜（ADS）时锁定**（`仅在开镜时锁定 = true`）。
+- **强制爆头**默认开启：任何远程武器命中生物都按爆头结算（×1.5），且**不受开镜限制**。
+- 打飞行 BOSS（信天翁）锁不稳时，先按 **小键盘 3** 看诊断，再用 8/5/9/7 微调。
+
+### 4.3 BoxingInjury — 拳击伤害改版（`boxinginjury.dll`）
+
+| 按键 | 功能 |
+|---|---|
+| **小键盘 小数点** | 开 / 关 拳击伤害改版 |
+
+空手出拳固定造成 **99999** 伤害（可在配置里改 `拳头伤害`）。
+
+### 4.4 Unrivalled — 无双 / 无敌（`unrivalled.dll`）
+
+| 按键 | 功能 |
+|---|---|
+| **小键盘 +** | 开 / 关 无双·无敌 |
+
+开启后本地玩家**受到任何伤害都不掉血**（攻击、BOSS、中毒、着火、饥饿全部免疫）。
+另有可选开关 `保持满血`（默认关）。
+
+### 4.5 FishUnlimitedMoneyFinal — 金钱（`maxmoney.dll`，可选）
+
+| 按键 | 功能 |
+|---|---|
+| **小键盘 1** | 金钱和欧元直接设为 **9999999** |
+
+> 这个 Mod 的 DLL 不在本仓库里（`moneychange\` 只有源码）。如果你手上已有 `maxmoney.dll`，直接放进 `plugins\` 即可。
+> 它**没有配置文件**（数值和按键都写死在代码里：9999999 / 小键盘 1），所以 `BepInEx\config\` 下不会生成它的 `.cfg`。
+
+### 4.6 按键冲突检查表
+
+默认配置下不冲突，全部按键占用情况：
+
+| 按键 | 归属 |
+|---|---|
+| 小键盘 0 | FlyMod 开关 |
+| 小键盘 1 | 金钱 |
+| 小键盘 2 / 3 / 4 / 5 / 6 / 7 / 8 / 9 | FishAimLock |
+| 小键盘 \* / / / = | FlyMod 调速 |
+| 小键盘 + | Unrivalled |
+| 小键盘 小数点 | BoxingInjury |
+| 空格 / 左Ctrl / 左Shift | FlyMod 上升/下降/加速（与游戏原按键重叠） |
+
+如果某个键没反应，多半是被别的 Mod 或游戏本体占了，去对应 `.cfg` 里换个键即可。
+
+---
+
+## 5. 配置文件怎么改
+
+第一次成功加载某个 Mod 后，会自动在下面生成配置：
+
+```
+BepInEx\config\
+├─ me.yexiao07.plugin.fishaimlock.cfg
+├─ me.yexiao07.plugin.boxinginjury.cfg
+├─ me.yexiao07.plugin.flymod.cfg
+└─ me.yexiao07.plugin.unrivalled.cfg
+```
+
+（`maxmoney.dll` 没有配置文件，数值和按键都写死在代码里。）
+
+改之前建议先**备份**一份 cfg；改坏了删掉它，下次启动会重新生成默认值。
+
+- 用记事本 / VS Code 打开，改 `键 = 值` 后面的部分。
+- **改完必须重启游戏**（配置只在启动时读取）。
+- 键位用 Unity 的 `KeyCode` 名称，例如：
+
+| 想设成 | 写 |
+|---|---|
+| 小键盘 0~9 | `Keypad0` ~ `Keypad9` |
+| 小键盘 + − * / | `KeypadPlus` `KeypadMinus` `KeypadMultiply` `KeypadDivide` |
+| 小键盘小数点 | `KeypadPeriod` |
+| 字母 | `F` `G` `H` |
+| 功能键 | `F1` ~ `F12` |
+| 鼠标 | `Mouse0` `Mouse1` `Mouse2` |
+
+常用可调项举例：
+
+```ini
+# FlyMod：把飞行速度上限拉高，并把上升键改到小键盘8（避免和跳跃冲突）
+最大速度(米/秒) = 200
+上升热键 = Keypad8
+下降热键 = Keypad5
+
+# BoxingInjury：改拳头伤害
+拳头伤害 = 99999
+
+# FishAimLock：强制爆头（默认已开）
+强制爆头 = true
+```
+
+---
+
+## 6. 验证是否加载成功
+
+1. 启动游戏，进到主菜单。
+2. 打开 **`BepInEx\LogOutput.log`**（用 VS Code / Notepad++ 看，别用记事本，中文可能乱码）。
+3. 搜索 `Loading [`，应该能看到：
+
+```
+[Info   :   BepInEx] 5 plugins to load
+[Info   :   BepInEx] Loading [BoxingInjury 1.0.0]
+[Info   :   BepInEx] Loading [FishAimLock 5.1.0]
+[Info   :   BepInEx] Loading [FlyMod 1.0.0]
+[Info   :   BepInEx] Loading [Unrivalled 1.0.0]
+```
+
+（`plugins to load` 的数字随你放进去的 DLL 数量变化，不用完全一样。）
+
+4. 每个插件加载后都会打印一段 **热键说明**（搜 `热键说明`），把当前按键和数值列出来：
+
+```
+[flymod] ================== FlyMod 热键说明 ==================
+[flymod]   小键盘0       切换“飞行/悬浮”开启关闭
+[flymod]   当前: 飞行=False 速度=20 m/s
+```
+
+看到这些就说明成功了，直接进游戏按热键即可。
+
+---
+
+## 7. 常见问题
+
+**Q：进游戏完全没反应，日志里连 `Loading [` 都没有。**
+A：BepInEx 没装好。检查 `winhttp.dll` 是否和 `How to Fish.exe` 在同一层；确认下的是 **x64 / Mono / 5.4.x** 版本，不是 6.x 也不是 IL2CPP 版。
+
+**Q：日志里出现 `Loading [xxx]` 但紧跟着报错，功能不生效。**
+A：多半是游戏版本更新导致字段/方法改名。日志里会有 `Harmony Patch 失败` 或 `NullReferenceException`，
+把 `LogOutput.log` 里报错那几行发出来，需要按新版本重新编译。
+
+**Q：按键没反应。**
+A：① 确认 NumLock 开着（小键盘键需要）；② 该键可能被别的 Mod 占用，见 4.6；③ 在对应 `.cfg` 里换个键并重启游戏。
+
+**Q：FlyMod 打开了但人物不飞。**
+A：① 必须先按一次 **小键盘 0** 开启（默认是关的）；② 开启后按 **WASD** 才移动，不按就是原地悬停；③ 在开船/驾驶状态时玩家移动会被游戏接管，飞行不生效——先下船。
+
+**Q：飞行时一开一关人物会弹一下。**
+A：这是正常的。关闭飞行时会把刚体速度清零并恢复重力，避免带着飞行速度砸出去。
+
+**Q：飞行会掉进水里被淹死吗？**
+A：水下窒息伤害仍然生效（本 Mod 不免疫）。想彻底安全就同时开 Unrivalled（小键盘 +）。
+
+**Q：改完配置没变化。**
+A：配置只在启动时读一次，**必须完全退出游戏再开**。
+
+**Q：联机能用吗？**
+A：这些 Mod 基本都只作用于**本地玩家**（无敌、飞行、拳击伤害都做了本地判断）。但金钱/伤害类在联机时可能被服务端校验覆盖，或被房主视为作弊，**建议只在单人/自建房里用**。
+
+**Q：游戏更新后 Mod 全失效了。**
+A：游戏更新通常会重写 `Assembly-CSharp.dll`，字段名/方法签名一变，Harmony 补丁就会失效。需要按新版本重新编译（第 3 步）。
+
+**Q：`dotnet build` 报找不到 `Assembly-CSharp.dll`。**
+A：`csproj` 里的 `<GameDir>` 还是我的路径，改成你自己的（见 3.2）。
+
+---
+
+## 8. 卸载
+
+- **只关掉某个功能**：在对应 `.cfg` 里把 `启用` 改成 `false`（比如 `飞行启用 = false`），或游戏里按热键关闭。
+- **彻底移除某个 Mod**：删掉 `BepInEx\plugins\` 下对应的 `.dll`，重启游戏。
+- **全部移除**：删掉 `BepInEx\plugins\` 里的所有 `.dll`；想彻底干净就把 `winhttp.dll`、`doorstop_config.ini`、`BepInEx\` 一起删掉。
+- 配置文件（`BepInEx\config\`）留着不影响，删了会在下次启动时重新生成默认值。
+
+---
+
+## 9. 仓库结构
+
+```
+how-to-fish-mod/
+├─ aimlock/
+│  ├─ aimlock.dll                    ← 编译好的插件
+│  └─ aimlock_src/
+│     ├─ aimlock.csproj
+│     ├─ FishAimLock.cs              主逻辑：瞄点计算、识别、锁定、专属瞄点
+│     ├─ Patch_Creature_LocalHit.cs  强制爆头（所有远程武器共用）
+│     └─ Patch_PlayerCamera_SetCamPosRot.cs  相机钩子
+├─ boxinginjury/
+│  ├─ boxinginjury.dll
+│  └─ boxinginjury_src/
+│     ├─ boxinginjury.csproj
+│     └─ BoxingInjury.cs
+├─ flymod/
+│  ├─ flymod.dll
+│  └─ flymod_src/
+│     ├─ flymod.csproj
+│     └─ FlyMod.cs
+├─ unrivalled/
+│  ├─ unrivalled.dll
+│  └─ unrivalled_src/
+│     ├─ unrivalled.csproj
+│     └─ Unrivalled.cs
+└─ moneychange/
+   ├─ change to 99999.txt            ← 只有源码，需自行编译
+   ├─ change to 9999999.txt
+   └─ change 9999999 1.0.txt
+```
+
+---
+
+## 免责声明
+
+本项目仅供**单人离线 / 自建房间**娱乐使用，请勿用于公开联机对局或商业用途。
+使用第三方 Mod 可能违反游戏用户协议，由此产生的一切后果由使用者自行承担。

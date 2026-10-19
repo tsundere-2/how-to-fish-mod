@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>flymod</AssemblyName>
+    <RootNamespace>flymod</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <!-- 改成你自己的游戏目录，或编译时用 -p:GameDir="..." 覆盖 -->
+    <GameDir>D:\SteamLibrary\steamapps\common\How to Fish\How to Fish</GameDir>
+    <GameManaged>$(GameDir)\How to Fish_Data\Managed</GameManaged>
+    <BepCore>$(GameDir)\BepInEx\core</BepCore>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>$(BepCore)\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(BepCore)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(GameManaged)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="FishNet.Runtime">
+      <HintPath>$(GameManaged)\FishNet.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- 引用 Unity / 第三方运行时，但不复制到输出，避免和游戏本体冲突 -->
+  <ItemGroup>
+    <_UnityRefs Include="$(GameManaged)\UnityEngine*.dll" />
+    <_UnityRefs Include="$(GameManaged)\Unity.*.dll" />
+    <_UnityRefs Include="$(GameManaged)\Heathen*.dll" />
+    <_UnityRefs Include="$(GameManaged)\FishyUnityTransport.dll" />
+    <_UnityRefs Include="$(GameManaged)\com.rlabrecque.steamworks.net.dll" />
+    <_UnityRefs Include="$(GameManaged)\Newtonsoft.Json.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="@(_UnityRefs)">
+      <HintPath>%(FullPath)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>
