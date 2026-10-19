@@ -101,28 +101,34 @@ How to Fish\BepInEx\plugins\
 
 ### 关于 `moneychange\`（金钱 Mod）
 
-`moneychange\` 里只有 **`.txt` 源码**，没有编译好的 DLL，所以不能直接丢进游戏。
-两种选择：
+`moneychange\` 现在是**标准工程结构**，和另外几个 Mod 一样可以直接编译：
 
-- **只要效果**：使用你已有的 `maxmoney.dll`（插件 `FishUnlimitedMoneyFinal`）。
-  按 **小键盘 1** → 金钱和欧元直接设为 **9999999**。
-- **想自己编译**：把 `.txt` 改名为 `.cs`，按第 3 步建工程编译（见下方 `moneychange` 的说明）。
+```
+moneychange\
+├─ moneychange.csproj
+├─ README.md              ← 这个 Mod 的详细说明
+└─ src\
+   └─ Money.cs
+```
 
-> 注意：仓库里这几个 `.txt` 是同一插件的不同历史版本，而且 **GUID 相同**，编译时只能留一个：
+编译产物是 **`maxmoney.dll`**（插件名 `FishUnlimitedMoneyFinal`）：
 
-| 文件 | 版本 | 说明 |
-|---|---|---|
-| `change to 99999.txt` | 1.5.0 | 早期版本，金钱 99999 |
-| `change to 9999999.txt` | 1.7.1 | 金钱 9999999，带底层字段改写 |
-| `change 9999999 1.0.txt` | 3.0.0 | 同时改 Money 和 Euro 的 SyncVar |
-| `change to 9999999 1.1.txt` | — | **空文件**，可忽略 |
+```powershell
+cd moneychange
+dotnet build -c Release
+# → bin\Release\maxmoney.dll 丢进 BepInEx\plugins\
+```
 
-> 同时编译两个会因同名命名空间/类报错，**只留一个**即可。
-> 文件本身是 UTF-8 编码，中文注释正常；如果你在 PowerShell 里 `cat` 看到乱码，那只是控制台编码问题，不影响编译。
+用法：进游戏按 **小键盘 1** → 美元和欧元设为 **9999999**。
+数值和按键都能在 `BepInEx\config\me.yexiao.fish.finalmod.cfg` 里改。
 
-> ⚠️ 还有一点：`maxmoney.dll` 和 `moneychange\` 里的源码用的是**同一个插件 GUID**
-> （`me.yexiao.fish.finalmod`）。所以**不要**同时把编译出来的 DLL 和现有的 `maxmoney.dll`
-> 一起放进 `plugins\`，否则 BepInEx 会报重复 GUID，只加载其中一个。二选一即可。
+> ⚠️ 本仓库**不附带**编译好的 `maxmoney.dll`，需要自己编译一次。
+> 如果你手上已有旧版 `maxmoney.dll`（3.0.0 / 3.1.0），它和这里编译出来的是**同一个 GUID**
+> （`me.yexiao.fish.finalmod`），**不能同时放**，二选一。
+
+> 📌 3.2.0 相比旧版修了一个实际问题：旧版依赖游戏的 `OnChangeMoney` 刷新 UI，
+> 但那个回调在**单人/主机模式**下 `asServer == true` 会被直接跳过，导致数字不变。
+> 新版会额外调一次 `PlayerUI.SetMoney` 补上。细节见 [`moneychange/README.md`](moneychange/README.md)。
 
 ---
 
@@ -188,21 +194,20 @@ dotnet build -c Release
 
 如果编译时报 `<GameDir>` 相关的找不到文件错误，说明路径没改，见 3.2。
 
-### 3.5 `moneychange` 怎么编译
+### 3.5 `moneychange` 编译
 
-1. 在 `moneychange\` 下新建文件夹 `src\`，把**其中一个** `.txt` 复制进去并改名成 `.cs`
-   （推荐 `change 9999999 1.0.txt` → `Money.cs`，这是最新版 3.0.0）。
-2. 新建 `moneychange\moneychange.csproj`，内容与 3.4 相同，只把这两行改掉：
+`moneychange\` 已经是完整工程，直接编译即可：
 
-```xml
-<AssemblyName>maxmoney</AssemblyName>
-<RootNamespace>maxmoney</RootNamespace>
+```powershell
+cd moneychange
+dotnet build -c Release
 ```
 
-3. `dotnet build -c Release`，把产物 `bin\Release\maxmoney.dll` 丢进 `plugins\`。
+产物 `bin\Release\maxmoney.dll` 丢进 `plugins\`。
+详细说明（含原理和单人模式的 UI 刷新问题）见 [`moneychange/README.md`](moneychange/README.md)。
 
 > 源码里用的 `Object.FindAnyObjectByType<T>()` 需要较新的 Unity，本作是 6000.4，没问题。
-> 如果你只是想改数值，编译前把源码顶部的 `ResetTargetMoney` / `CustomMoneyValue` 常量改成你要的数字即可。
+> 想改数值不用改代码：编译后直接改 `BepInEx\config\me.yexiao.fish.finalmod.cfg` 里的 `货币数值`。
 
 ---
 
@@ -273,8 +278,9 @@ dotnet build -c Release
 |---|---|
 | **小键盘 1** | 金钱和欧元直接设为 **9999999** |
 
-> 这个 Mod 的 DLL 不在本仓库里（`moneychange\` 只有源码）。如果你手上已有 `maxmoney.dll`，直接放进 `plugins\` 即可。
-> 它**没有配置文件**（数值和按键都写死在代码里：9999999 / 小键盘 1），所以 `BepInEx\config\` 下不会生成它的 `.cfg`。
+> 本仓库**不附带**编译好的 `maxmoney.dll`，需要按 3.5 自己编译一次。
+> 数值和按键都可以在 `BepInEx\config\me.yexiao.fish.finalmod.cfg` 里改（`货币数值` / `一键补满货币按键`）。
+> 和旧版 `maxmoney.dll`（3.0.0 / 3.1.0）是同一个 GUID，**不能同时放**。
 
 ### 4.6 按键冲突检查表
 
@@ -303,10 +309,11 @@ BepInEx\config\
 ├─ me.yexiao07.plugin.fishaimlock.cfg
 ├─ me.yexiao07.plugin.boxinginjury.cfg
 ├─ me.yexiao07.plugin.flymod.cfg
-└─ me.yexiao07.plugin.unrivalled.cfg
+├─ me.yexiao07.plugin.unrivalled.cfg
+└─ me.yexiao.fish.finalmod.cfg        （金钱 Mod，自己编译的才有）
 ```
 
-（`maxmoney.dll` 没有配置文件，数值和按键都写死在代码里。）
+（每个文件在对应 Mod **第一次成功加载后**才会生成。）
 
 改之前建议先**备份**一份 cfg；改坏了删掉它，下次启动会重新生成默认值。
 
@@ -439,9 +446,10 @@ how-to-fish-mod/
 │     ├─ unrivalled.csproj
 │     └─ Unrivalled.cs
 └─ moneychange/
-   ├─ change to 99999.txt            ← 只有源码，需自行编译
-   ├─ change to 9999999.txt
-   └─ change 9999999 1.0.txt
+   ├─ moneychange.csproj
+   ├─ README.md                       ← 这个 Mod 的原理与说明
+   └─ src/
+      └─ Money.cs                     ← 货币重置（产物 maxmoney.dll）
 ```
 
 ---
