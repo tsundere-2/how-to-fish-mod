@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>modcontrol</AssemblyName>
+    <RootNamespace>modcontrol</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <!-- 改成你自己的游戏目录，或编译时用 -p:GameDir="..." 覆盖 -->
+    <GameDir>D:\SteamLibrary\steamapps\common\How to Fish\How to Fish</GameDir>
+    <GameManaged>$(GameDir)\How to Fish_Data\Managed</GameManaged>
+    <BepCore>$(GameDir)\BepInEx\core</BepCore>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>$(BepCore)\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Unity 运行时程序集（仅编译期，不复制） -->
+  <ItemGroup>
+    <_UnityRefs Include="$(GameManaged)\UnityEngine*.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="@(_UnityRefs)">
+      <HintPath>%(FullPath)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

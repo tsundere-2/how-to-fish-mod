@@ -11,12 +11,13 @@
 
 ---
 
-## 快速开始（3 步）
+## 快速开始
 
 1. 装 **BepInEx 5.4.23.5 x64**（见第 1 节），先启动一次游戏再退出。
-2. 把 `aimlock.dll` / `boxinginjury.dll` / `flymod.dll` / `unrivalled.dll` 全部丢进
-   `How to Fish\BepInEx\plugins\`。
+2. 把 `aimlock.dll` / `boxinginjury.dll` / `flymod.dll` / `unrivalled.dll` / `modcontrol.dll`
+   （以及可选的 `maxmoney.dll`）全部丢进 `How to Fish\BepInEx\plugins\`。
 3. 重启游戏 → 看 `BepInEx\LogOutput.log` 里出现 `Loading [FlyMod 1.0.0]` 之类的行就成功了。
+4. 进游戏后按 **F1** 呼出 **Mod 控制中心**，所有开关和数值都能在面板里直接调。
 
 > 想改数值或加功能 → 看第 3 节从源码编译；只想要效果 → 第 2 节就够了，**不需要装 .NET SDK**。
 
@@ -79,6 +80,7 @@ How to Fish\
 | `boxinginjury/boxinginjury.dll` | `BepInEx\plugins\` |
 | `flymod/flymod.dll` | `BepInEx\plugins\` |
 | `unrivalled/unrivalled.dll` | `BepInEx\plugins\` |
+| `modcontrol/modcontrol.dll` | `BepInEx\plugins\` |
 | `moneychange/maxmoney.dll` | `BepInEx\plugins\` |
 
 操作步骤：
@@ -96,6 +98,7 @@ How to Fish\BepInEx\plugins\
 ├─ aimlock.dll
 ├─ boxinginjury.dll
 ├─ flymod.dll
+├─ modcontrol.dll
 ├─ unrivalled.dll
 └─ maxmoney.dll        ← 金钱 Mod（见下方说明）
 ```
@@ -182,6 +185,7 @@ dotnet build -c Release
 cd boxinginjury\boxinginjury_src ; dotnet build -c Release
 cd unrivalled\unrivalled_src    ; dotnet build -c Release
 cd flymod\flymod_src            ; dotnet build -c Release
+cd modcontrol\modcontrol_src    ; dotnet build -c Release   # 产物 modcontrol.dll
 cd moneychange\moneychange_src  ; dotnet build -c Release   # 产物 maxmoney.dll
 ```
 
@@ -287,12 +291,47 @@ DLL 就在 [`moneychange/maxmoney.dll`](moneychange/maxmoney.dll)，直接下载
 > 数值和按键都可以在 `BepInEx\config\me.yexiao.fish.finalmod.cfg` 里改（`货币数值` / `一键补满货币按键`）。
 > 和旧版 `maxmoney.dll`（3.0.0 / 3.1.0）是同一个 GUID，**不能同时放**，删掉旧的再用新的。
 
-### 4.6 按键冲突检查表
+### 4.6 ModControlCenter — 游戏内控制面板（`modcontrol.dll`）
+
+进游戏后按 **F1** 呼出「液态玻璃」风格的悬浮窗，所有 Mod 的开关和数值都能在游戏里直接调，
+改完自动写回对应的 `.cfg`，不用退出游戏改文件。
+
+| 按键 / 操作 | 功能 |
+|---|---|
+| **F1** | 显示 / 隐藏 控制面板 |
+| **拖动标题栏** | 移动窗口 |
+| **点标题栏右侧按钮** | 折叠 / 展开整个列表 |
+| **点行标题** | 展开该 Mod 的详细选项 |
+| **点右侧开关** | 实时开 / 关 |
+| **拖动滑条** | 调数值（飞行速度、拳头伤害） |
+
+面板里能控制：
+
+| 条目 | 可调项 |
+|---|---|
+| 自动瞄准 | 总开关 · 锁鱼 / 锁鸟 / 锁 Boss / 锁其他 · 强制爆头 |
+| 飞行模式 | 总开关 · 飞行速度（5 ~ 60 m/s） |
+| 拳击伤害改版 | 总开关 · 拳头伤害（100 ~ 99999） |
+| 无双 · 无敌 | 总开关 · 保持满血 |
+| 金钱拉满 | 插件本体开关（本 Mod 没有配置文件） |
+
+- 面板是**自动发现**的：任何插件里带 `启用` 的布尔配置都会生成一行，所以以后加了新 Mod 也会出现。
+- 标题栏左上角的圆点 + `N 已启用` 显示当前开启数量。
+- 界面完全由代码生成（圆角贴图 + 系统字体），不依赖任何额外资源文件。
+- 关闭面板后热键仍然有效，随时按 **F1** 再叫出来。
+
+> 面板本身的两个设置也在配置里：`BepInEx\config\me.yexiao07.plugin.modcontrol.cfg`
+> → `[界面] 显示/隐藏热键`（默认 `F1`）和 `启动时显示`（默认 `true`）。
+
+实现原理（自动发现、双向同步、贴图烘焙）见 [`modcontrol/README.md`](modcontrol/README.md)。
+
+### 4.7 按键冲突检查表
 
 默认配置下不冲突，全部按键占用情况：
 
 | 按键 | 归属 |
 |---|---|
+| F1 | ModControlCenter 面板开关 |
 | 小键盘 0 | FlyMod 开关 |
 | 小键盘 1 | 金钱 |
 | 小键盘 2 / 3 / 4 / 5 / 6 / 7 / 8 / 9 | FishAimLock |
@@ -315,10 +354,14 @@ BepInEx\config\
 ├─ me.yexiao07.plugin.boxinginjury.cfg
 ├─ me.yexiao07.plugin.flymod.cfg
 ├─ me.yexiao07.plugin.unrivalled.cfg
+├─ me.yexiao07.plugin.modcontrol.cfg
 └─ me.yexiao.fish.finalmod.cfg        （金钱 Mod，自己编译的才有）
 ```
 
 （每个文件在对应 Mod **第一次成功加载后**才会生成。）
+
+> ModControlCenter 的开关改动会**自动写回**这些 cfg；但面板只覆盖它认识的条目，
+> 想看全部参数（例如 FishAimLock 的瞄点微调、识别参数）还是直接改文件更全。
 
 改之前建议先**备份**一份 cfg；改坏了删掉它，下次启动会重新生成默认值。
 
@@ -450,6 +493,12 @@ how-to-fish-mod/
 │  └─ unrivalled_src/
 │     ├─ unrivalled.csproj
 │     └─ Unrivalled.cs
+├─ modcontrol/
+│  ├─ modcontrol.dll                 ← 游戏内控制面板
+│  ├─ README.md
+│  └─ modcontrol_src/
+│     ├─ modcontrol.csproj
+│     └─ ModControlCenter.cs         悬浮窗：自动发现 ConfigEntry、实时开关/调参
 └─ moneychange/
    ├─ maxmoney.dll                    ← 编译好的插件
    ├─ README.md                       ← 这个 Mod 的原理与说明
