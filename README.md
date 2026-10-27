@@ -17,7 +17,7 @@
 2. 把 `aimlock.dll` / `boxinginjury.dll` / `flymod.dll` / `unrivalled.dll` / `modcontrol.dll`
    （以及可选的 `maxmoney.dll`）全部丢进 `How to Fish\BepInEx\plugins\`。
 3. 重启游戏 → 看 `BepInEx\LogOutput.log` 里出现 `Loading [FlyMod 1.0.0]` 之类的行就成功了。
-4. 进游戏后按 **F1** 呼出 **Mod 控制中心**，所有开关和数值都能在面板里直接调。
+4. 进游戏后左上角出现 **Mod 控制中心** 的小方框，点它（或按 **F1**）展开，所有开关和数值都能直接调。
 
 > 想改数值或加功能 → 看第 3 节从源码编译；只想要效果 → 第 2 节就够了，**不需要装 .NET SDK**。
 
@@ -189,6 +189,9 @@ cd modcontrol\modcontrol_src    ; dotnet build -c Release   # 产物 modcontrol.
 cd moneychange\moneychange_src  ; dotnet build -c Release   # 产物 maxmoney.dll
 ```
 
+> `modcontrol` 的 csproj 带 `CopyToPlugins` 目标：编译成功后会自动把 `modcontrol.dll`
+> 复制到 `$(GameDir)\BepInEx\plugins\`，不用手动再拷一次。
+
 ### 3.4 `flymod` 的工程文件
 
 `flymod/flymod_src/` 里已经放好 `flymod.csproj`（和另外几个 Mod 的配置完全一致），
@@ -293,17 +296,20 @@ DLL 就在 [`moneychange/maxmoney.dll`](moneychange/maxmoney.dll)，直接下载
 
 ### 4.6 ModControlCenter — 游戏内控制面板（`modcontrol.dll`）
 
-进游戏后按 **F1** 呼出「液态玻璃」风格的悬浮窗，所有 Mod 的开关和数值都能在游戏里直接调，
+进游戏后左上角就是一个**小方框**（状态点 · 已启用数量 · 展开按钮），点它或按 **F1** 会以这个小方框的
+左上角为原点展开「液态玻璃」风格的完整面板，所有 Mod 的开关和数值都能在游戏里直接调，
 改完自动写回对应的 `.cfg`，不用退出游戏改文件。
 
 | 按键 / 操作 | 功能 |
 |---|---|
-| **F1** | 显示 / 隐藏 控制面板 |
-| **拖动标题栏** | 移动窗口 |
-| **点标题栏右侧按钮** | 折叠 / 展开整个列表 |
-| **点行标题** | 展开该 Mod 的详细选项 |
-| **点右侧开关** | 实时开 / 关 |
+| **F1** | 小方框 ⇄ 完整面板 |
+| **点小方框右侧按钮** | 展开 / 收起面板 |
+| **拖动面板** | 移动窗口（自动夹在屏幕内） |
+| **滚轮 / 列表内拖动** | 上下翻动 Mod 列表 |
+| **点行标题** | 展开该 Mod 的详细选项（窗口高度跟着变） |
+| **点右侧开关** | 实时开 / 关（轨道颜色即时切换） |
 | **拖动滑条** | 调数值（飞行速度、拳头伤害） |
+| **↑ ↓ / ← → / Enter** | 键盘逐行选中 · 收起/展开 · 开关 |
 
 面板里能控制：
 
@@ -316,12 +322,14 @@ DLL 就在 [`moneychange/maxmoney.dll`](moneychange/maxmoney.dll)，直接下载
 | 金钱拉满 | 插件本体开关（本 Mod 没有配置文件） |
 
 - 面板是**自动发现**的：任何插件里带 `启用` 的布尔配置都会生成一行，所以以后加了新 Mod 也会出现。
-- 标题栏左上角的圆点 + `N 已启用` 显示当前开启数量。
-- 界面完全由代码生成（圆角贴图 + 系统字体），不依赖任何额外资源文件。
+- 标题栏左上角的圆点 + `N 已启用` 显示当前开启数量；收起成小方框时只显示这个数字。
+- 界面完全由代码生成（SDF 烘焙圆角/渐变/图标贴图 + 系统字体），不依赖任何额外资源文件。
+- 玻璃质感是「深色底 + 薄白高光」双层叠加，压住背后水面杂色，白字对比清楚。
+- 行列表是可滚动区域：多个条目同时展开也不会把窗口撑爆，滚轮上下翻；窗口高度随内容自动变化（封顶 620）。
 - 关闭面板后热键仍然有效，随时按 **F1** 再叫出来。
 
-> 面板本身的两个设置也在配置里：`BepInEx\config\me.yexiao07.plugin.modcontrol.cfg`
-> → `[界面] 显示/隐藏热键`（默认 `F1`）和 `启动时显示`（默认 `true`）。
+> 面板本身的三个设置也在配置里：`BepInEx\config\me.yexiao07.plugin.modcontrol.cfg`
+> → `[界面] 显示/隐藏热键`（默认 `F1`）、`打开时解锁鼠标`（默认 `true`）、`启动时显示悬浮框`（默认 `true`）。
 
 实现原理（自动发现、双向同步、贴图烘焙）见 [`modcontrol/README.md`](modcontrol/README.md)。
 
@@ -498,7 +506,7 @@ how-to-fish-mod/
 │  ├─ README.md
 │  └─ modcontrol_src/
 │     ├─ modcontrol.csproj
-│     └─ ModControlCenter.cs         悬浮窗：自动发现 ConfigEntry、实时开关/调参
+│     └─ ModControlCenter.cs         悬浮窗：小方框/展开、滚动列表、自动发现 ConfigEntry
 └─ moneychange/
    ├─ maxmoney.dll                    ← 编译好的插件
    ├─ README.md                       ← 这个 Mod 的原理与说明

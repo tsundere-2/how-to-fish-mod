@@ -10,7 +10,7 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-    <!-- 改成你自己的游戏目录，或编译时用 -p:GameDir="..." 覆盖 -->
+    <!-- 改成你自己的游戏目录，或编译时用 -p:GameDir="..." 覆盖；编译产物会自动复制到该目录的 BepInEx\plugins -->
     <GameDir>D:\SteamLibrary\steamapps\common\How to Fish\How to Fish</GameDir>
     <GameManaged>$(GameDir)\How to Fish_Data\Managed</GameManaged>
     <BepCore>$(GameDir)\BepInEx\core</BepCore>
@@ -33,5 +33,10 @@
       <Private>false</Private>
     </Reference>
   </ItemGroup>
+
+  <!-- 构建后自动部署到 BepInEx\plugins 根目录（游戏实际加载的位置） -->
+  <Target Name="CopyToPlugins" AfterTargets="Build">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\BepInEx\plugins" />
+  </Target>
 
 </Project>
