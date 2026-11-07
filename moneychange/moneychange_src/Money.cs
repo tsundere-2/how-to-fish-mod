@@ -3,6 +3,7 @@ using System.Reflection;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
+using FishNet.Object;
 using HarmonyLib;
 using UnityEngine;
 
@@ -28,7 +29,7 @@ namespace FishUnlimitedMoneyFinal
     ///
     /// 全部走反射，不直接引用 MoneyManager 类型，游戏小更新也不容易编译失败。
     /// </summary>
-    [BepInPlugin("me.yexiao.fish.finalmod", "FishUnlimitedMoneyFinal", "3.2.0")]
+    [BepInPlugin("me.yexiao.fish.finalmod", "FishUnlimitedMoneyFinal", "3.3.0")]
     public class FishUnlimitedMoneyFinal : BaseUnityPlugin
     {
         internal static FishUnlimitedMoneyFinal Instance;
@@ -53,6 +54,12 @@ namespace FishUnlimitedMoneyFinal
 
         private static bool _fieldsReady;
         private static bool _instanceWarned;
+
+        // _money / _euro 是服务器权威 SyncVar：只有服务端（单人/房主）能真正写入并同步。
+        // 加入他人房间时是纯客户端，本地改值会被服务器下一帧覆盖，购买也在服务器校验。
+        private static bool _isServer = true;
+        private static bool _roleLogged;
+        private static bool _clientWarned;
 
         private void Awake()
         {
@@ -95,7 +102,7 @@ namespace FishUnlimitedMoneyFinal
                 Log.LogWarning("[money] 准备 UI 刷新方法失败: " + ex.Message);
             }
 
-            Log.LogInfo("[money] FishUnlimitedMoneyFinal v3.2 加载成功");
+            Log.LogInfo("[money] FishUnlimitedMoneyFinal v3.3 加载成功");
             LogKeyHelp();
         }
 
@@ -117,7 +124,14 @@ namespace FishUnlimitedMoneyFinal
                 _moneyMgrInstance = FindMoneyManager();
                 if (_moneyMgrInstance != null)
                 {
-                    Log.LogInfo("[money] 已获取 MoneyManager 实例");
+                    _isServer = DetectIsServer(_moneyMgrInstance);
+                    Log.LogInfo("[money] 已获取 MoneyManager 实例 | 网络模式: "
+                        + (_isServer ? "主机/单人（可写入真实货币）" : "联机客户端（货币由房主服务器下发）"));
+                    if (!_roleLogged)
+                    {
+                        _roleLogged = true;
+                        if (!_isServer) WarnClientOnly();
+                    }
                 }
                 else if (!_instanceWarned && Time.timeSinceLevelLoad > 10f)
                 {
@@ -129,8 +143,33 @@ namespace FishUnlimitedMoneyFinal
 
             if (Input.GetKeyDown(_hotkey.Value))
             {
+                if (!_isServer)
+                {
+                    WarnClientOnly();
+                    return;
+                }
                 ApplyMoney(_amount.Value);
             }
+        }
+
+        private static bool DetectIsServer(UnityEngine.Object moneyManager)
+        {
+            try
+            {
+                NetworkBehaviour nb = moneyManager as NetworkBehaviour;
+                if (nb != null) return nb.IsServerInitialized;
+            }
+            catch { }
+            // 无法判断时按单人/主机处理，避免误伤正常模式。
+            return true;
+        }
+
+        private static void WarnClientOnly()
+        {
+            if (_clientWarned) return;
+            _clientWarned = true;
+            Log.LogWarning("[money] 检测到联机客户端：货币是服务器权威 SyncVar，本地写入会被覆盖，"
+                + "购买/结算仍由房主服务器校验，本 Mod 无效。请在「本机开房间 / 单人」使用。");
         }
 
         /// <summary>解析所有反射成员。</summary>
@@ -191,6 +230,11 @@ namespace FishUnlimitedMoneyFinal
         private static void ApplyMoney(int value)
         {
             if (_moneyMgrInstance == null) return;
+            if (!_isServer)
+            {
+                WarnClientOnly();
+                return;
+            }
             try
             {
                 int before = ReadCurrent();

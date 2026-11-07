@@ -5,7 +5,7 @@
 - 插件名：`FishUnlimitedMoneyFinal`
 - 产物：`maxmoney.dll`
 - 插件 GUID：`me.yexiao.fish.finalmod`
-- 版本：3.2.0
+- 版本：3.3.0
 
 ## 目录
 
@@ -107,3 +107,5 @@ private void OnChangeMoney(int prev, int next, bool asServer)
 
 - 和旧版 `maxmoney.dll`（3.0.0 / 3.1.0）**GUID 相同**，不能同时放，二选一。
 - 只在单人 / 自建主机有效；纯客户端连别人的服务器时，数值由服务端决定，改了也会被同步回来。
+- 3.3.0 起会检测 `MoneyManager.IsServerInitialized`：客户端模式下热键直接提示并跳过，不再写入本地假数值；
+  进入游戏时日志会打印 `网络模式: 主机/单人` 或 `联机客户端`。

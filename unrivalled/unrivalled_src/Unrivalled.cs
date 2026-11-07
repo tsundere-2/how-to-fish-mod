@@ -19,7 +19,7 @@ namespace unrivalled
     /// 因此只要在 TakeDamage 前缀里返回 false，就能拦截全部扣血，且不影响其它逻辑。
     /// 默认只保护本地玩家，联机时不会让别的玩家也变无敌。
     /// </summary>
-    [BepInPlugin("me.yexiao07.plugin.unrivalled", "Unrivalled", "1.0.0")]
+    [BepInPlugin("me.yexiao07.plugin.unrivalled", "Unrivalled", "1.1.0")]
     public class Unrivalled : BaseUnityPlugin
     {
         internal static Unrivalled Instance;
@@ -31,6 +31,11 @@ namespace unrivalled
 
         private static FieldInfo _playerField;
         private static float _lastHeal;
+
+        // 联机模式：只有房主/单人时 PlayerVitals 才是服务端权威（IsServerInitialized）。
+        // 加入他人房间时为纯客户端，血量由服务器结算后同步，本 Mod 拦不到。
+        private static bool _roleLogged;
+        private static bool _clientWarned;
 
         private void Awake()
         {
@@ -48,7 +53,7 @@ namespace unrivalled
             try
             {
                 new Harmony("me.yexiao07.plugin.unrivalled").PatchAll(typeof(Patch_PlayerVitals_TakeDamage));
-                Log.LogInfo("[unrivalled] Unrivalled v1.0 加载成功，Harmony Patch 已应用");
+                Log.LogInfo("[unrivalled] Unrivalled v1.1 加载成功，Harmony Patch 已应用");
             }
             catch (Exception ex)
             {
@@ -62,6 +67,8 @@ namespace unrivalled
 
         private void Update()
         {
+            LogNetworkRoleOnce();
+
             if (Input.GetKeyDown(_toggleKey.Value))
             {
                 _enabled.Value = !_enabled.Value;
@@ -74,10 +81,39 @@ namespace unrivalled
                 try
                 {
                     Player p = Player.LocalPlayer;
-                    if (p != null && p.Vitals != null) p.Vitals.Heal(100);
+                    if (p != null && p.Vitals != null)
+                    {
+                        if (p.Vitals.IsServerInitialized) p.Vitals.Heal(100);
+                        else WarnClientOnly();
+                    }
                 }
                 catch { }
             }
+        }
+
+        // 进入存档后只打印一次：当前是主机/单人还是联机客户端。
+        private static void LogNetworkRoleOnce()
+        {
+            if (_roleLogged) return;
+            try
+            {
+                Player p = Player.LocalPlayer;
+                if (p == null || p.Vitals == null) return;
+                _roleLogged = true;
+                bool server = p.Vitals.IsServerInitialized;
+                Log.LogInfo("[unrivalled] 网络模式: " + (server
+                    ? "主机/单人（服务端在本进程，无敌生效）"
+                    : "联机客户端（血量由房主服务器结算，无敌无效）"));
+            }
+            catch { }
+        }
+
+        private static void WarnClientOnly()
+        {
+            if (_clientWarned) return;
+            _clientWarned = true;
+            Log.LogWarning("[unrivalled] 检测到联机客户端：PlayerVitals 由服务器权威同步，本 Mod 无法拦截真实伤害。"
+                + "无敌/保持满血仅在「本机开房间 / 单人」有效。");
         }
 
         // 由补丁调用。返回 false = 跳过原方法（不扣血）。
@@ -86,6 +122,14 @@ namespace unrivalled
             if (!_enabled.Value) return true;
             try
             {
+                // 客户端本地 TakeDamage 本身就会因 IsServerInitialized=false 直接返回，
+                // 真正扣血发生在房主进程，这里拦不到，直接提示并放行。
+                if (vitals != null && !vitals.IsServerInitialized)
+                {
+                    WarnClientOnly();
+                    return true;
+                }
+
                 if (_playerField != null && vitals != null)
                 {
                     Player owner = _playerField.GetValue(vitals) as Player;
